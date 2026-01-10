@@ -17,6 +17,8 @@ ta:      ../bin/PDTI_ABIC_TA ../bin/PDTI_get_init_model_para_TmpSm
 
 ta_d:    ../bin/PDTI_inversionA_TAd 
 
+clean:
+		rm -f ../bin/PDTI*
 
 #--------------------------------------------------
 ../bin/PDTI_get_knot_info: get_knot_info.f90  sub.c_location_lib.f90 
