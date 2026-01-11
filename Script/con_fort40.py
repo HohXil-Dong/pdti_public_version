@@ -185,6 +185,22 @@ def get_basis_mt(strike_b, dip_b, rake_b):
     
     return np.array([m_dd, m_nn, m_ee, m_nd, -m_ed, -m_ne])
 
+def read_rotation_basis(filepath):
+    """Load 5 elementary basis (strike, dip, rake) from file or use STANDARD basis."""
+    if filepath is None or filepath == "STANDARD":
+        # Kikuchi/PDTI default basis
+        return [
+            (0., 90., 0.),
+            (135., 90., 0.),
+            (180., 90., 90.),
+            (90., 90., 90.),
+            (90., 45., 90.)
+        ]
+    
+    data = np.loadtxt(filepath)
+    # Rotation_basis_DC.dat: 3×5 matrix, rows = (strike, dip, rake)
+    return [(data[0, i], data[1, i], data[2, i]) for i in range(5)]
+
 def vec_to_azi_plunge_lower(vec):
     # Vector to Azimuth/Plunge (lower hemisphere)
     n, e, d = vec
@@ -198,16 +214,10 @@ def vec_to_azi_plunge_lower(vec):
     
     return az, pl
 
-def convert(fort40_path, out_pdtdis):
+def convert(fort40_path, out_pdtdis, rotation_basis_file=None):
     data = load_fort40_full(fort40_path)
     
-    basis_defs = [
-        (0., 90., 0.),
-        (135., 90., 0.),
-        (180., 90., 90.),
-        (90., 90., 90.),
-        (90., 45., 90.)
-    ]
+    basis_defs = read_rotation_basis(rotation_basis_file)
     basis_mts = np.array([get_basis_mt(s, d, r) for s, d, r in basis_defs])
     
     # Output columns:
@@ -296,7 +306,9 @@ import os
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Convert fort.40 to pdtdis.dat")
     parser.add_argument("fort40", help="Path to fort.40 file")
-    parser.add_argument("--output", default="pdtdis.dat", help="Output filename (default: pdtdis.dat)")
+    parser.add_argument("--output", "-o", default="pdtdis.dat", help="Output filename (default: pdtdis.dat)")
+    parser.add_argument("--rotation-basis", "-r", dest="rotation_basis", default=None,
+                        help="Path to Rotation_basis_DC.dat. If omitted, STANDARD basis is used.")
     
     args = parser.parse_args()
     
@@ -304,4 +316,4 @@ if __name__ == "__main__":
         print(f"Error: Input file '{args.fort40}' not found.")
         sys.exit(1)
         
-    convert(args.fort40, args.output)
+    convert(args.fort40, args.output, args.rotation_basis)
