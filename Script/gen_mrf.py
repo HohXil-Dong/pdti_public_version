@@ -3,6 +3,7 @@ import numpy as np
 import os
 import argparse
 import sys
+import matplotlib.pyplot as plt
 
 class PDTI_MRF_Generator:
     def __init__(self, fort40_path, rigid_path, output_path):
@@ -184,9 +185,9 @@ class PDTI_MRF_Generator:
             raise ValueError("Data not loaded. valid start_times, coeff_data, rigidity, and amplification are required.")
 
         # Time sampling
-        # cover from 0 to max_start_time + jtn*rtime + padding
-        max_t = np.max(self.start_times) + self.jtn * self.rtime + 10.0
-        dt = 1.1 # Yagi's sampling (1.1s)
+        # cover from 0 to max_start_time + jtn*rtime 
+        max_t = np.max(self.start_times) + self.jtn * self.rtime 
+        dt = self.rtime # Yagi's sampling (1.1s)
         
         time_points = np.arange(0.0, max_t, dt)
         num_steps = len(time_points)
@@ -283,6 +284,63 @@ class PDTI_MRF_Generator:
                 f.write(f"{t:10.3f}     ")
                 f.write(" ".join([f"{v:14.6E}" for v in vals_scaled]))
                 f.write("\n")
+        
+        # Store for plotting
+        self.time_points = time_points
+        self.scalar_rate = scalar_rate
+    
+    def plot_mrf(self, output_fig=None):
+        """
+        Plot the Moment Rate Function (MRF).
+        """
+        if not hasattr(self, 'time_points') or not hasattr(self, 'scalar_rate'):
+            raise ValueError("MRF data not generated. Run generate_mrf() first.")
+        
+        # Determine scaling exponent 
+        max_rate = np.max(self.scalar_rate)
+        if max_rate > 0:
+            exponent = int(np.floor(np.log10(max_rate)))
+        else:
+            exponent = 18  # fallback
+        
+        scale_factor = 10.0 ** (-exponent)
+        scalar_rate_scaled = self.scalar_rate * scale_factor
+        
+        # Create figure
+        fig, ax = plt.subplots(figsize=(10, 5))
+        
+        ax.fill_between(self.time_points, scalar_rate_scaled, alpha=0.4, color='gray')
+        ax.plot(self.time_points, scalar_rate_scaled, color='black', linewidth=1.5)
+        
+        ax.set_xlabel('Time (s)', fontsize=12)
+        ax.set_ylabel(rf'Moment Rate ($\times 10^{{{exponent}}}$ N$\cdot$m/s)', fontsize=12)
+        ax.set_title('Moment Rate Function', fontsize=14)
+        
+        ax.set_xlim(0, self.time_points[-1])
+        ax.set_ylim(bottom=0)
+        
+        ax.grid(True, linestyle='--', alpha=0.5)
+        ax.tick_params(axis='both', labelsize=10)
+        
+        # Annotate total moment
+        total_moment = np.trapezoid(self.scalar_rate, self.time_points)
+        mw_calc = (2.0 / 3.0) * (np.log10(total_moment) - 9.1)
+        
+        m0_exponent = int(np.floor(np.log10(total_moment)))
+        m0_mantissa = total_moment / (10.0 ** m0_exponent)
+        
+        info_text = f'$M_0$ = {m0_mantissa:.2f} $\\times 10^{{{m0_exponent}}}$ N$\\cdot$m\n$M_w$ = {mw_calc:.2f}'
+        ax.text(0.97, 0.95, info_text, transform=ax.transAxes, 
+                fontsize=11, verticalalignment='top', horizontalalignment='right',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8, edgecolor='gray'))
+        
+        plt.tight_layout()
+        
+        if output_fig:
+            plt.savefig(output_fig, dpi=150, bbox_inches='tight')
+            print(f"MRF plot saved to: {output_fig}")
+        else:
+            plt.show()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -290,7 +348,8 @@ if __name__ == "__main__":
     )
     parser.add_argument("fort40", help="Path to fort.40 file")
     parser.add_argument("rigid", help="Path to rigid_amp.info file")
-    parser.add_argument("--output", default="mrf.dat", help="Path to output mrf.dat file (default: mrf.dat)")
+    parser.add_argument("--output", "-o", default="mrf.dat", help="Path to output mrf.dat file (default: mrf.dat)")
+    parser.add_argument("--plot", "-p", default="mrf.png", help="Path to output MRF figure (default: mrf.png)")
     
     args = parser.parse_args()
     
@@ -305,4 +364,6 @@ if __name__ == "__main__":
     gen.read_fort40()
     gen.read_rigid()
     gen.generate_mrf()
+    gen.plot_mrf(output_fig=args.plot)
+    
     print("Done.")
