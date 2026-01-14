@@ -45,10 +45,12 @@ def parse_fort40(filename):
     if start_time_idx != -1:
         current_line = start_time_idx
         for n_idx in range(nn): # n from nn down to 1
-            vals = [float(x) for x in lines[current_line].split()]
+            vals = []
+            while len(vals) < mn:
+                vals.extend([float(x) for x in lines[current_line].split()])
+                current_line += 1
             n = nn - 1 - n_idx
-            Tr[:, n] = vals
-            current_line += 1
+            Tr[:, n] = vals[:mn]
     else:
         raise ValueError("Start Time block not found in fort.40")
 
