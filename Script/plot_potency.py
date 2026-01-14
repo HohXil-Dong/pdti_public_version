@@ -124,11 +124,15 @@ def plot_potency(fort40_path, pdtdis_path, pddis_path, output_file='potency_dist
                      transform=ccrs.PlateCarree(), alpha=0.8)
     
     # Colorbar
-    ax_cb = ax.inset_axes([0.65, 0.05, 0.3, 0.02])
-    cbar = plt.colorbar(cf, cax=ax_cb, orientation='horizontal')
+    ax_cb = ax.inset_axes([0.25, 0.05, 0.02, 0.2])
+    cbar = plt.colorbar(cf, cax=ax_cb, orientation='vertical')
     cbar.set_label('Slip (m)', fontsize=8, labelpad=2)
     cbar.ax.tick_params(labelsize=7)
-    cbar.set_ticks([0, max_slip / 2.0, max_slip])
+    cbar.set_ticks([0, np.round(max_slip / 2.0, 1), np.round(max_slip, 1)])
+    
+    # Control colorbar tick and label position (left or right)
+    ax_cb.yaxis.set_ticks_position('left')
+    ax_cb.yaxis.set_label_position('left')
     
     # --- Compute moment for each subfault ---
     tensors = []
@@ -156,10 +160,13 @@ def plot_potency(fort40_path, pdtdis_path, pddis_path, output_file='potency_dist
     # --- Plot beachballs ---
     # Size scaling: linear in (moment / max_moment), capped to TARGET_MW_MAX
     TARGET_MW_MAX = 8.0
-    SIZE_FACTOR = 2.4
+    SIZE_FACTOR = 2.0
     norm = mpl.colors.Normalize(vmin=0, vmax=max_slip)
     
-    for item in tensors:
+    # Sort tensors by 'n' ascending (Deep -> Shallow) 
+    tensors.sort(key=lambda x: x['row']['n'], reverse=False)
+
+    for i, item in enumerate(tensors):
         row = item['row']
         mt = item['mt_orientation']
         mw_fake = max((item['moment'] / max_moment) * TARGET_MW_MAX, 0.1)
@@ -168,23 +175,28 @@ def plot_potency(fort40_path, pdtdis_path, pddis_path, output_file='potency_dist
         
         proj_pt = ax.projection.transform_point(row['lon'], row['lat'], src_crs=ccrs.Geodetic())
         
+        # Incremental zorder to ensure shallow balls (drawn later) cover deep balls
+        z_base = i 
+        
         try:
             # Deviatoric fill
             beachball.plot_beachball_mpl(
                 mt, ax, beachball_type='deviatoric', position=proj_pt, size=size,
-                color_t=color, color_p='white', edgecolor='none', linewidth=0, zorder=10
+                color_t=color, color_p='white', edgecolor='none', linewidth=0, zorder=z_base
             )
             # DC nodal planes
             beachball.plot_beachball_mpl(
                 mt, ax, beachball_type='dc', position=proj_pt, size=size,
-                color_t='none', color_p='none', edgecolor='black', linewidth=0.3, zorder=11
+                color_t='none', color_p='none', edgecolor='black', linewidth=0.3, zorder=z_base + 0.1
             )
         except Exception:
             pass  
 
     # --- Plot hypocenter ---
+    # Ensure hypocenter is on top of all beachballs 
+    hypo_zorder = len(tensors) + 10
     ax.scatter(ref_lon, ref_lat, transform=ccrs.PlateCarree(), marker='*', s=300, 
-               c='yellow', edgecolors='black', zorder=20, label='Hypocenter')
+               c='yellow', edgecolors='black', zorder=hypo_zorder, label='Hypocenter')
     
     ax.set_title(f"Potency Tensor Distribution\nHypocenter: {ref_lat}N {ref_lon}E {ref_depth}km")
 
