@@ -119,6 +119,8 @@ def main():
     parser = argparse.ArgumentParser(description="Parse and visualize rupture spacetime from fort.40.")
     parser.add_argument("fort40", type=str, help="Path to the fort.40 input file")
     parser.add_argument("--output", default="rupture_history.png", help="Output filename (default: rupture_history.png)")
+    parser.add_argument("--axes", "-a", choices=['time-x', 'dist-x'], default='time-x', 
+                        help="Axis layout: 'time-x' (Time on X-axis) or 'dist-x' (Distance on X-axis). Default: time-x")
     
     args = parser.parse_args()
     fort_file = args.fort40
@@ -247,13 +249,37 @@ def main():
     # 1. Filled Contours
     max_val = Z_fine.max()
     levels_f = np.linspace(0, max_val, 100)
-    cf = ax.contourf(X_fine, Y_fine, Z_fine, levels=levels_f, cmap=cmap, extend='max')
     
-    # 2. Line Contours (0.02 m/s interval)
-    contour_step = 0.02
-    if max_val > contour_step:
-        levels_l = np.arange(contour_step, max_val + contour_step/2.0, contour_step)
-        cs = ax.contour(X_fine, Y_fine, Z_fine, levels=levels_l, colors='k', linewidths=0.5)
+    if args.axes == 'time-x':
+        # Swap axes: Time (Y_fine) on x-axis, Distance (X_fine) on y-axis
+        cf = ax.contourf(Y_fine, X_fine, Z_fine, levels=levels_f, cmap=cmap, extend='max')
+        
+        # 2. Line Contours (0.04 m/s interval)
+        contour_step = 0.04
+        if max_val > contour_step:
+            levels_l = np.arange(contour_step, max_val + contour_step/2.0, contour_step)
+            cs = ax.contour(Y_fine, X_fine, Z_fine, levels=levels_l, colors='k', linewidths=0.5)
+            
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Distance along strike (km)')
+        ax.set_title(f'Rupture Process (Mw {Mw})')
+        ax.set_xlim(0, t_max)
+        
+    else: # dist-x
+        # Original axes: Distance (X_fine) on x-axis, Time (Y_fine) on y-axis
+        cf = ax.contourf(X_fine, Y_fine, Z_fine, levels=levels_f, cmap=cmap, extend='max')
+        
+        # 2. Line Contours
+        contour_step = 0.04
+        if max_val > contour_step:
+            levels_l = np.arange(contour_step, max_val + contour_step/2.0, contour_step)
+            cs = ax.contour(X_fine, Y_fine, Z_fine, levels=levels_l, colors='k', linewidths=0.5)
+            
+        ax.set_xlabel('Distance (km)')
+        ax.set_ylabel('Time (s)')
+        ax.set_title(f'Rupture Process (Mw {Mw})')
+        ax.invert_xaxis()
+        ax.set_ylim(0, t_max)
     
     # 3. Colorbar (Inset bottom left)
     ax_cb = ax.inset_axes([0.05, 0.1, 0.3, 0.02])
@@ -267,12 +293,6 @@ def main():
     
     # 4. Epicenter (Star at Origin)
     ax.scatter(0, 0, s=400, marker='*', facecolor='None', edgecolor='k', linewidth=2, zorder=100, clip_on=False)
-    
-    ax.set_xlabel('Distance (km)')
-    ax.set_ylabel('Time (s)')
-    ax.set_title(f'Rupture Process (Mw {Mw})')
-    ax.invert_xaxis()
-    ax.set_ylim(0, t_max)
     
     outname = args.output
     plt.savefig(outname, dpi=300, bbox_inches='tight')
