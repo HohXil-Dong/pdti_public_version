@@ -35,31 +35,36 @@ class Config:
     # Pre-filter low frequency corners (f1, f2).
     # High frequency corners (f3, f4) are calculated dynamically based on Nyquist.
     # PDTI retains high-frequency components
-    PRE_FILT_LOW = (0.0033, 0.02)
+    PRE_FILT_LOW = (0.001, 0.002)
 
     # DO NOT USE BANDPASS FILTER IN PDTI
-    # Specific Pre-filter for Viewing (Visual Inspection)
+    # Specific Pre-filter for Conventional FFI
     # Filters out high frequencies for cleaner plots (f3=0.8, f4=1.0)
-    PRE_FILT_VIEW = (0.0033, 0.02, 0.8, 1.0)
+    PRE_FILT_VIEW = (0.001, 0.002, 0.8, 1.0)
     
     TARGET_DT = 0.05          # Target sampling interval (s) = 20 Hz
     SCALE_FACTOR = 1.0e6      # Scaling factor to convert units (m/s -> um/s)
     TAPER_PERCENTAGE = 0.05   # Taper length (percentage of trace)
 
     # ---------------- Processing Options ----------------
-    OUTPUT_TYPE = 'VEL'             # 'VEL' (Velocity) or 'DISP' (Displacement)
+    OUTPUT_TYPE = 'DISP'             # 'VEL' (Velocity) or 'DISP' (Displacement)
     # Normalize by max amplitude between P and PP
     # In order to compare with Prof Yagi's pictures, Default FALSE 
     NORMALIZE_WAVEFORM = False      
 
     # ---------------- Windowing & Output ----------------
+    # PP arrival offset for testing (s). Set to 0.0 for original TauP PP time.
+    # This offset is used to match the pp_idx in Prof. Yagi's Kamchatka example data.
+    # Positive value shifts PP later 
+    PP_OFFSET = 40.0
+    
     CUT_PRE_P = 10.0          # Time (s) before P-arrival to start cut(Align with Wave.obs)
     NOISE_WINDOW_LEN = 10.0   # Window length (s) for noise STD calculation (Pre-P)
-    NPTS_OUT = 8192           # Number of points for output files
+    NPTS_OUT = 8400           # Number of points for output files
 
-    # ---------------- Visualization ----------------
+    # ------- Visualization (Just Preliminary examination, Not Used in gen_inv_final.py) --------
     PLOT_WIN_START = -10.0    # Plot window start relative to P (s)
-    PLOT_WIN_END = 200.0      # Plot window end relative to P (s) 
+    PLOT_WIN_END = 300.0      # Plot window end relative to P (s) 
     AZ_PLOT_SCALE = 6.0       # Azimuth scale factor for record section plots
     
     PHASE_CONFIG = {
@@ -72,19 +77,39 @@ class Config:
 
 # ================= UTILITY FUNCTIONS =================
 
-def get_unique_arrivals(model, depth, dist_deg, phase_list):
+def get_unique_arrivals(model, depth, dist_deg, phase_list, use_latest=False):
     """
     Calculate theoretical travel times using the TauP model.
+    
+    Parameters
+    ----------
+    model : TauPyModel
+        TauP velocity model instance.
+    depth : float
+        Source depth in km.
+    dist_deg : float
+        Epicentral distance in degrees.
+    phase_list : list of str
+        List of phase names to compute (e.g., ['P', 'PP', 'S']).
+    use_latest : bool, optional
+        If True, return the latest arrival for each phase type.
+        If False (default), return the earliest arrival.
+        Due to 410 km  & 660 km discontinuities, multiple arrivals for each phase type.
+        
+    Returns
+    -------
+    list
+        List of unique Arrival objects (one per phase type).
     """
     try:
         arrivals = model.get_travel_times(source_depth_in_km=depth,
                                           distance_in_degree=dist_deg,
                                           phase_list=phase_list)
         
-        # Sort by arrival time
-        arrivals.sort(key=lambda x: x.time)
+        # Sort by arrival time (ascending for earliest, descending for latest)
+        arrivals.sort(key=lambda x: x.time, reverse=use_latest)
         
-        # Filter duplicates (keep only the first arrival of each phase type)
+        # Filter duplicates (keep only the first encountered arrival of each phase type)
         unique_arrivals = []
         seen_phases = set()
         
@@ -92,6 +117,9 @@ def get_unique_arrivals(model, depth, dist_deg, phase_list):
             if arr.name not in seen_phases:
                 unique_arrivals.append(arr)
                 seen_phases.add(arr.name)
+        
+        # Re-sort by time ascending for consistent output order
+        unique_arrivals.sort(key=lambda x: x.time)
                 
         return unique_arrivals
     except Exception as e:

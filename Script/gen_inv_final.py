@@ -3,17 +3,16 @@
 Generate Final Inversion Input (Marked Data)
 
 This script processes "Marked" SAC files (with manual P-picks) to generate
-the final input data for inversion. It is similar to gen_inv.py but uses
+the final input data for PDTI. It is similar to gen_inv.py but uses
 manual picks (T3 header) rather than theoretical arrivals for alignment,
-and includes some post-processing steps.
+and includes specific post-processing steps like generate process report.
 
 Steps:
 1.  Read SAC files from 'Marked' directory.
 2.  Align using Manual P-Pick (T3) or fallback to T1.
-3.  Preprocess, Remove Response, Downsample.
-4.  Cut waveform aligned on manual P-picks.
-5.  Zero out data 300s after P-picks(similar to Okuwaki).
-6.  Select best traces(From Different Kholes) and generate output.
+3.  Preprocess, Remove Response(HighPass), Downsample(Without Anti-aliasing filter).
+4.  Cut waveform aligned on P.
+5.  Select best traces and generate output.
 
 Dependencies:
     common_utils.py
@@ -49,6 +48,7 @@ SAC_FILE_PATTERN = "Marked/*.SAC"
 def calculate_geometry_and_theoretical_arrivals(tr, model, origin_time):
     """
     Calculate geometry and fetch Manual Pick (T3) or fallback (T1).
+    Calculates P-time relative to Origin.
     """
     try:
         if not (hasattr(tr.stats, 'sac') and 'stla' in tr.stats.sac and 'stlo' in tr.stats.sac):
@@ -62,10 +62,17 @@ def calculate_geometry_and_theoretical_arrivals(tr, model, origin_time):
         dist_m, az, baz = gps2dist_azimuth(Config.EVT_LAT, Config.EVT_LON, stla, stlo)
         dist_deg = locations2degrees(Config.EVT_LAT, Config.EVT_LON, stla, stlo)
         
-        # use manual P-pick & theoretical PP 
-        arrivals = get_unique_arrivals(model, Config.EVT_DEPTH, dist_deg, ["PP"])
+        # Theoretical Arrivals regarding Origin Time for PP reference
+        # Note: We trust manual P-pick, but use theoretical PP 
+        arrivals = get_unique_arrivals(model, Config.EVT_DEPTH, dist_deg, ["PP"], use_latest=True)
         pp_arr = next((arr for arr in arrivals if arr.name == 'PP'), None)
         
+        # Apply PP offset for testing (shifts PP arrival time later)
+        pp_time_with_offset = None
+        if pp_arr:
+            pp_time_with_offset = pp_arr.time + Config.PP_OFFSET
+        
+        # Determine P travel time using Manual Pick T3, fallback to T1 (Obspy)
         p_time_rel_origin = None
         
         # Check T3 (Manual)
@@ -84,14 +91,14 @@ def calculate_geometry_and_theoretical_arrivals(tr, model, origin_time):
             p_time_rel_origin = pick_time - tr.stats.sac.o
         else:
             # Calculate reference time (relative to start time)
-            # 'b' header is start time relative to reference time
+            # SAC 'b' header is start time relative to reference time
             ref_time = tr.stats.starttime - tr.stats.sac.b
             o_calc = origin_time - ref_time
             p_time_rel_origin = pick_time - o_calc
                 
         return {
             "p_time": p_time_rel_origin,
-            "pp_time": pp_arr.time if pp_arr else None,
+            "pp_time": pp_time_with_offset,
             "az": az,
             "dist_deg": dist_deg,
             "stla": stla,
@@ -103,7 +110,7 @@ def calculate_geometry_and_theoretical_arrivals(tr, model, origin_time):
 
 def cut_waveform_and_stats(tr, origin_time, p_time_rel_origin, pp_time_rel_origin):
     """
-    Cut, scale, normalize, and specifically zero-out late data (300s post-P).
+    Cut, scale, normalize.
     """
     # 1. Unit scale first (m -> um)
     tr.data = tr.data * Config.SCALE_FACTOR
@@ -136,19 +143,23 @@ def cut_waveform_and_stats(tr, origin_time, p_time_rel_origin, pp_time_rel_origi
     else:
         print(f"    [Warning] P-arrival index mismatch: expected {expected_p_idx}, got {p_idx}")
 
-    # Offset Removal: Zero at P-arrival
-    if 0 <= p_idx < len(tr_cut.data):
-        offset = tr_cut.data[p_idx]
+    # Offset Removal: Zero at waveform start (index 0)
+    if len(tr_cut.data) > 0:
+        offset = tr_cut.data[0]
         tr_cut.data = tr_cut.data - offset
+    # Offset Removal: Zero at P-arrival
+    # if 0 <= p_idx < len(tr_cut.data):
+    #     offset = tr_cut.data[p_idx]
+    #     tr_cut.data = tr_cut.data - offset
         
-    # Zero out data 300s after P-arrival (Specific to Final Inversion)
-    samps_300s = int(round(300.0 / Config.TARGET_DT))
-    idx_300s = p_idx + samps_300s
-    
-    if idx_300s < len(tr_cut.data):
-        tr_cut.data[idx_300s:] = 0.0
+    # Zero out data 400s after P-arrival (Specific to Final Inversion)
+    # Commented out: PDTI controls waveform length via nend, tlength, and 95% energy criterion
+    # samps_400s = int(round(400.0 / Config.TARGET_DT))
+    # idx_400s = p_idx + samps_400s
+    # if idx_400s < len(tr_cut.data):
+    #     tr_cut.data[idx_400s:] = 0.0
 
-    # Calculate Noise STD (Pre-P)
+    # Calculate Noise (Pre-P)
     if p_idx > 0:
         noise_std = np.std(tr_cut.data[:p_idx])
     else:
@@ -181,24 +192,38 @@ def cut_waveform_and_stats(tr, origin_time, p_time_rel_origin, pp_time_rel_origi
 
 def plot_waveform(times, data, p_sec, pp_sec, station, channel, noise_std, output_path):
     """Generate plotting for verification."""
-    fig = plt.figure(figsize=(10, 4))
-    plt.plot(times, data, 'k', linewidth=0.5, label='Waveform')
+    from matplotlib.transforms import offset_copy
     
-    plt.axvline(x=p_sec, color='red', linestyle='--', alpha=0.8, linewidth=1.5, label='P')
-    plt.text(p_sec, np.max(np.abs(data)) * 0.8, 'P', color='red', rotation=90, verticalalignment='bottom')
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.plot(times, data, 'k', linewidth=0.5, label='Waveform')
     
+    # Fixed Y-axis range for consistent figure sizing across stations
+    max_amp = np.max(np.abs(data)) if len(data) > 0 else 1.0
+    if max_amp < 1e-12:
+        max_amp = 1.0  # Fallback for near-zero data
+    y_margin = max_amp * 1.1
+    ax.set_ylim(-y_margin, y_margin)
+    
+    # P-wave marker with text annotation in axes-relative coordinates
+    ax.axvline(x=p_sec, color='red', linestyle='--', alpha=0.8, linewidth=1.5, label='P')
+    # Transform: data x-coordinate, axes-relative y-coordinate
+    trans_p = ax.get_xaxis_transform()
+    ax.text(p_sec, 0.85, 'P', color='red', fontweight='bold', 
+            transform=trans_p, ha='center', va='bottom')
+    
+    # PP-wave marker
     if pp_sec and pp_sec > 0 and pp_sec < times[-1]:
-         plt.axvline(x=pp_sec, color='orange', linestyle='--', alpha=0.8, linewidth=1.5, label='PP')
-         plt.text(pp_sec, np.max(np.abs(data)) * 0.8, 'PP', color='orange', rotation=90, verticalalignment='bottom')
+        ax.axvline(x=pp_sec, color='orange', linestyle='--', alpha=0.8, linewidth=1.5, label='PP')
+        ax.text(pp_sec, 0.85, 'PP', color='orange', fontweight='bold',
+                transform=trans_p, ha='center', va='bottom')
 
     unit = "Velocity (um/s)" if Config.OUTPUT_TYPE == 'VEL' else "Displacement (um)"
     if Config.NORMALIZE_WAVEFORM: unit = "Normalized Amplitude"
     
-    plt.title(f"{station}.{channel}\nNoise Std: {noise_std:.2e}")
-    plt.xlabel("Time (s)")
-    plt.ylabel(unit)
+    ax.set_title(f"{station}.{channel}\nNoise Std: {noise_std:.2e}")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel(unit)
     
-    ax = plt.gca()
     ax.xaxis.set_major_locator(MultipleLocator(50))
     ax.xaxis.set_minor_locator(MultipleLocator(10))
     ax.grid(True, which='major', linestyle='-', alpha=0.7)
@@ -227,6 +252,7 @@ def process_file(sac_file, model, origin_time):
         
         # Check variables for reporting
         if 't3' not in tr.stats.sac or tr.stats.sac.t3 is None:
+            # Check T1 fallback implies T3 was missing
             report['missing_t3'] = True
             
         # Check PZ existence
@@ -249,20 +275,34 @@ def process_file(sac_file, model, origin_time):
         # 2. Preprocess
         tr = preprocess_trace(tr)
         
-        # 3. Instrument Response
-        tr, used_nyquist = remove_instrument_response(tr)
-        if tr is None: 
+        # 3. Instrument Response - Always compute VEL first for noise std
+        tr_vel, used_nyquist = remove_instrument_response(tr.copy(), output_type='VEL')
+        if tr_vel is None: 
             if not report['missing_pz']:
                 report['resp_rem_fail'] = True
             return None, report
         
-        # 4. Downsample
-        if not downsample_trace(tr): 
+        # 4. Downsample velocity trace
+        if not downsample_trace(tr_vel): 
             report['resample_fail'] = True
             return None, report
         
-        # 5. Cut, Scale, Noise, Normalize
-        cut_info = cut_waveform_and_stats(tr, origin_time, arr_info['p_time'], arr_info['pp_time'])
+        # 5. Cut velocity trace and compute noise_std from velocity
+        cut_info_vel = cut_waveform_and_stats(tr_vel, origin_time, arr_info['p_time'], arr_info['pp_time'])
+        noise_std_from_vel = cut_info_vel['noise_std']
+        
+        # 6. Prepare output trace based on OUTPUT_TYPE
+        if Config.OUTPUT_TYPE == 'VEL':
+            # Use velocity waveform directly
+            cut_info = cut_info_vel
+        else:
+            # OUTPUT_TYPE == 'DISP': recompute with displacement
+            tr_disp, _ = remove_instrument_response(tr.copy(), output_type='DISP')
+            downsample_trace(tr_disp)
+            cut_info = cut_waveform_and_stats(tr_disp, origin_time, arr_info['p_time'], arr_info['pp_time'])
+        
+        # Override noise_std with value computed from velocity waveform
+        cut_info['noise_std'] = noise_std_from_vel
         
         result = {
             "station": tr.stats.station,
