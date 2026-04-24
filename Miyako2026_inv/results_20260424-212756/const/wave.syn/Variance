@@ -1,0 +1,5 @@
+  Variance   0.2637529    
+  Here average Variance = (1/Jn) sigma_j ( (obs_j(t)-syn_j(t))^2 / obs_j(t))^2 )
+  
+  Note: Variance in fort.40 = sigma_j (obs_j(t)-syn_j(t))^2 ) / sigma_j (obs_j(t
+ )^2 ) 

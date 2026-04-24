@@ -1,0 +1,37 @@
+* **************************************************
+* NETWORK     : GE
+* STATION     : DAG
+* LOCATION    : 
+* CHANNEL     : BHZ
+* CREATED     : 2026-04-22T07:23:22.107459Z
+* START       : 2026-01-20T14:00:00.000000Z
+* END         : None
+* DESCRIPTION : GEOFON/AWI Station Danmarkshavn, Greenland
+* LATITUDE    : 76.7713
+* LONGITUDE   : -18.655
+* ELEVATION   : 23.0
+* DEPTH       : 0.0
+* DIP (SEED)  : -90.0
+* AZIMUTH     : 0.0
+* SAMPLE RATE : 20.0
+* INPUT UNIT  : M
+* OUTPUT UNIT : COUNTS
+* INSTTYPE    : VBB
+* INSTGAIN    : 1500.0 (M/S)
+* SENSITIVITY : 629145600.0 (M/S)
+* A0          : 60077000.0
+* **************************************************
+ZEROS 3
+ +0.000000e+00 +0.000000e+00
+ +0.000000e+00 +0.000000e+00
+ +0.000000e+00 +0.000000e+00
+POLES 5
+ -3.700400e-02 +3.701600e-02
+ -3.700400e-02 -3.701600e-02
+ -2.513300e+02 +0.000000e+00
+ -1.310400e+02 -4.672900e+02
+ -1.310400e+02 +4.672900e+02
+CONSTANT 3.779718e+16
+
+
+

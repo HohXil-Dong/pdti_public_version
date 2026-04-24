@@ -1,0 +1,39 @@
+* **********************************
+* NETWORK   (KNETWK): CN
+* STATION    (KSTNM): YKAW3
+* LOCATION   (KHOLE): 
+* CHANNEL   (KCMPNM): BHZ
+* CREATED           : 2026-04-22T07:22:41
+* START             : 2013-07-15T20:00:00
+* END               : 
+* DESCRIPTION       : Yellowknife White 3, NT, CA
+* LATITUDE          : 62.561600
+* LONGITUDE         : -114.609900
+* ELEVATION         : 196.6
+* DEPTH             : 0.0
+* DIP               : 0.0
+* AZIMUTH           : 0.0
+* SAMPLE RATE       : 40.0
+* INPUT UNIT        : M
+* OUTPUT UNIT       : COUNTS
+* INSTTYPE          : Guralp CMG3T_360sec/Guralp DM24-MK3 Datalogger
+* INSTGAIN          : 6.018750e+03 (M/S)
+* COMMENT           : 
+* SENSITIVITY       : 4.201090e+09 (M/S)
+* A0                : 5.713970e+08
+* **********************************
+ZEROS	3
+	+0.000000e+00	+0.000000e+00	
+	+0.000000e+00	+0.000000e+00	
+	+0.000000e+00	+0.000000e+00	
+POLES	5
+	-1.234000e-02	+1.234000e-02	
+	-1.234000e-02	-1.234000e-02	
+	-5.027000e+02	+0.000000e+00	
+	-1.005000e+03	+0.000000e+00	
+	-1.131000e+03	+0.000000e+00	
+CONSTANT	2.400490e+18
+
+
+
+

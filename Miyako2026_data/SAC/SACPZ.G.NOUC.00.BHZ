@@ -1,0 +1,36 @@
+* **************************************************
+* NETWORK     : G
+* STATION     : NOUC
+* LOCATION    : 00
+* CHANNEL     : BHZ
+* CREATED     : 2026-04-22T07:23:34.530281Z
+* START       : 2012-04-25T00:00:00.000000Z
+* END         : 2500-12-31T23:59:59.000000Z
+* DESCRIPTION : Port Laguerre - New Caledonia, France
+* LATITUDE    : -22.09863
+* LONGITUDE   : 166.30665
+* ELEVATION   : 137.0
+* DEPTH       : 0.0
+* DIP (SEED)  : -90.0
+* AZIMUTH     : 0.0
+* SAMPLE RATE : 20.0
+* INPUT UNIT  : M
+* OUTPUT UNIT : counts
+* INSTTYPE    : None
+* INSTGAIN    : 3230.0 (m/s)
+* SENSITIVITY : 5419170000.0 (m/s)
+* A0          : 5876.35
+* **************************************************
+ZEROS 3
+ +0.000000e+00 +0.000000e+00
+ +0.000000e+00 +0.000000e+00
+ +0.000000e+00 +0.000000e+00
+POLES 4
+ -1.227600e-02 +1.191800e-02
+ -1.227600e-02 -1.191800e-02
+ -3.210390e+01 +6.959940e+01
+ -3.210390e+01 -6.959940e+01
+CONSTANT 3.184494e+13
+
+
+

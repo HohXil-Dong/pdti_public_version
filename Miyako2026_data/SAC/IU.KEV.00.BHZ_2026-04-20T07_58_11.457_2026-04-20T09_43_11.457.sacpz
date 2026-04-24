@@ -1,0 +1,36 @@
+* **************************************************
+* NETWORK     : IU
+* STATION     : KEV
+* LOCATION    : 00
+* CHANNEL     : BHZ
+* CREATED     : 2026-04-21T08:56:23.602238Z
+* START       : 2012-06-20T00:00:00.000000Z
+* END         : None
+* DESCRIPTION : Kevo, Finland
+* LATITUDE    : 69.7565
+* LONGITUDE   : 27.0035
+* ELEVATION   : 85.0
+* DEPTH       : 15.0
+* DIP (SEED)  : -90.0
+* AZIMUTH     : 0.0
+* SAMPLE RATE : 20.0
+* INPUT UNIT  : M
+* OUTPUT UNIT : counts
+* INSTTYPE    : STRECKEISEN
+* INSTGAIN    : 3507.0 (m/s)
+* SENSITIVITY : 5883840000.0 (m/s)
+* A0          : 6021.81
+* **************************************************
+ZEROS 3
+ +0.000000e+00 +0.000000e+00
+ +0.000000e+00 +0.000000e+00
+ +0.000000e+00 +0.000000e+00
+POLES 4
+ -1.219360e-02 -1.174690e-02
+ -1.219360e-02 +1.174690e-02
+ -3.918400e+01 -6.694300e+01
+ -3.918400e+01 +6.694300e+01
+CONSTANT 3.543137e+13
+
+
+

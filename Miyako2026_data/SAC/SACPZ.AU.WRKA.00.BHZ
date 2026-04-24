@@ -1,0 +1,44 @@
+* **********************************
+* NETWORK   (KNETWK): AU
+* STATION    (KSTNM): WRKA
+* LOCATION   (KHOLE): 00
+* CHANNEL   (KCMPNM): BHZ
+* CREATED           : 2026-04-22T07:22:37
+* START             : 2019-06-16T00:00:00
+* END               : 
+* DESCRIPTION       : Warrakurna, Western Australia
+* LATITUDE          : -25.037500
+* LONGITUDE         : 128.296097
+* ELEVATION         : 622.0
+* DEPTH             : 0.0
+* DIP               : 0.0
+* AZIMUTH           : 0.0
+* SAMPLE RATE       : 40.0
+* INPUT UNIT        : M
+* OUTPUT UNIT       : COUNTS
+* INSTTYPE          : Nanometrics Trillium 120 Sec Response/Centaur Stan
+* INSTGAIN          : 1.196420e+03 (M/S)
+* COMMENT           : 
+* SENSITIVITY       : 1.196420e+09 (M/S)
+* A0                : 3.091790e+05
+* **********************************
+ZEROS	6
+	+0.000000e+00	+0.000000e+00	
+	+0.000000e+00	+0.000000e+00	
+	+0.000000e+00	+0.000000e+00	
+	-9.000000e+01	+0.000000e+00	
+	-1.607000e+02	+0.000000e+00	
+	-3.108000e+03	+0.000000e+00	
+POLES	7
+	-3.852000e-02	+3.658000e-02	
+	-3.852000e-02	-3.658000e-02	
+	-1.780000e+02	+0.000000e+00	
+	-1.350000e+02	+1.600000e+02	
+	-1.350000e+02	-1.600000e+02	
+	-6.710000e+02	+1.154000e+03	
+	-6.710000e+02	-1.154000e+03	
+CONSTANT	3.699079e+14
+
+
+
+
